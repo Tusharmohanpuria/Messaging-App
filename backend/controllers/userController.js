@@ -42,16 +42,3 @@ exports.deleteUser = async (req, res) => {
         res.status(500).send('Server Error');
     }
 };
-
-exports.getCurrUser = async (req, res) => {
-    try {
-        const [user] = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
-        if (user.length === 0) return res.status(404).send('User Not Found');
-        res.status(200).json(user[0]);
-    } catch (err) {
-        res.status(500).send('Server Error');
-    }
-};
-
-
-
