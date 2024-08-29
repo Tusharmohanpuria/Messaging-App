@@ -1,5 +1,12 @@
 import io from 'socket.io-client';
 
-const socket = io('http://localhost:5000');
+const createSocket = (email) => {
+  return io('http://localhost:5000', {
+    query: {
+      email
+    }
+  });
+};
 
-export default socket;
+export default createSocket;
+

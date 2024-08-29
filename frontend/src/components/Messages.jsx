@@ -1,71 +1,94 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Form, Button, ListGroup, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/Api';
-import socket from '../services/Socket';
+import { useAuth } from '../contexts/AuthContext';
 
 function Messages() {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const [allMessages, setAllMessages] = useState({});
   const [content, setContent] = useState('');
   const [error, setError] = useState(null);
-  const [onlineUsers, setOnlineUsers] = useState([]);
   const navigate = useNavigate();
+  const { currentUser, socket, onlineUsers, initializeSocket } = useAuth();
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const { data } = await api.get('/users');
-        setUsers(data);
-        setError(null);
-      } catch (error) {
-        console.error('Error fetching users:', error);
-        handleError(error);
-      }
-    };
+    initializeSocket();
+  }, [initializeSocket]);
 
+  const fetchUsers = useCallback(async () => {
+    try {
+      const { data } = await api.get('/users');
+      setUsers(data.filter(user => user.email !== currentUser));
+      setError(null);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      handleError(error);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
     fetchUsers();
+  }, [fetchUsers]);
 
-    socket.on('onlineUsers', (onlineUsers) => {
-      setOnlineUsers(onlineUsers);
+  const handleNewMessage = useCallback((message) => {
+    setAllMessages((prevMessages) => {
+      const otherUserId = message.sender_id === currentUser ? message.recipient_id : message.sender_id;
+      const updatedMessages = { ...prevMessages };
+      if (!updatedMessages[otherUserId]) {
+        updatedMessages[otherUserId] = [];
+      }
+      
+      const messageExists = updatedMessages[otherUserId].some(msg => msg.id === message.id);
+      if (!messageExists) {
+        updatedMessages[otherUserId] = [...updatedMessages[otherUserId], message];
+      }
+      return updatedMessages;
     });
+  }, [currentUser]);
 
-    return () => socket.off('onlineUsers');
-  }, [navigate]);
+  useEffect(() => {
+    if (socket) {
+      socket.on('message', handleNewMessage);
+      return () => socket.off('message', handleNewMessage);
+    }
+  }, [socket, handleNewMessage]);
+
+  const fetchMessages = useCallback(async (userId) => {
+    try {
+      const response = await api.get(`/messages/${userId}`);
+      setAllMessages(prevMessages => ({
+        ...prevMessages,
+        [userId]: response.data
+      }));
+      setError(null);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      handleError(error);
+    }
+  }, []);
 
   useEffect(() => {
     if (selectedUser) {
-      const fetchMessages = async () => {
-        try {
-          const response = await api.get(`/messages/${selectedUser.id}`);
-          setMessages(response.data);
-          setError(null);
-        } catch (error) {
-          console.error('Error fetching messages:', error);
-          handleError(error);
-        }
-      };
-      fetchMessages();
-
-      socket.on('message', (message) => {
-        if (message.sender_id === selectedUser.id || message.recipient_id === selectedUser.id) {
-          setMessages((prevMessages) => [...prevMessages, message]);
-        }
-      });
-
-      return () => socket.off('message');
+      fetchMessages(selectedUser.id);
     }
-  }, [selectedUser]);
+  }, [selectedUser, fetchMessages]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [allMessages]);
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!selectedUser) return;
+    if (!selectedUser || !socket || !content.trim()) return;
 
     try {
-      const messageData = { recipient_id: selectedUser.id, content };
-      await api.post('/messages', messageData);
-      socket.emit('sendMessage', messageData);
+      const response = await api.post('/messages', { recipient_id: selectedUser.id, content });
+      const newMessage = response.data;
+      handleNewMessage(newMessage);
+      socket.emit('sendMessage', newMessage);
       setContent('');
       setError(null);
     } catch (error) {
@@ -75,33 +98,24 @@ function Messages() {
   };
 
   const handleError = (error) => {
+    console.error('Error details:', error);
     if (error.response) {
-      switch (error.response.status) {
-        case 400:
-          setError('Bad request. Please check your input.');
-          break;
-        case 401:
-          setError('Unauthorized. Please log in again.');
-          navigate('/login');
-          break;
-        case 403:
-          setError('Forbidden. You do not have permission to access this resource.');
-          break;
-        default:
-          setError(`An error occurred: ${error.response.data}`);
-      }
+      setError(`Server error: ${error.response.data.message || error.response.statusText}`);
     } else if (error.request) {
-      setError('No response received from the server. Please try again later.');
+      setError('No response received from the server. Please check your connection.');
     } else {
       setError(`Error: ${error.message}`);
     }
   };
 
-  const isUserOnline = (userId) => onlineUsers.includes(userId);
+  const isUserOnline = (email) => onlineUsers.includes(email);
+
+  const currentMessages = selectedUser ? allMessages[selectedUser.id] || [] : [];
 
   return (
-    <div className="d-flex">
-      <div className="user-list">
+    <div className="d-flex h-100">
+      <div className="user-list" style={{ width: '30%', borderRight: '1px solid #ccc', padding: '10px', overflowY: 'auto' }}>
+        <h5>Contacts</h5>
         <ListGroup>
           {users.map((user) => (
             <ListGroup.Item
@@ -110,41 +124,61 @@ function Messages() {
               active={selectedUser && selectedUser.id === user.id}
               style={{ cursor: 'pointer' }}
             >
-              {user.name} {isUserOnline(user.id) ? '🟢' : '🔴'}
+              {user.name} {isUserOnline(user.email) ? '🟢' : '🔴'}
+              {allMessages[user.id] && allMessages[user.id].length > 0 && (
+                <span className="badge bg-primary rounded-pill float-end">
+                  {allMessages[user.id].length}
+                </span>
+              )}
             </ListGroup.Item>
           ))}
         </ListGroup>
       </div>
-      <div className="message-area">
+      <div className="message-area" style={{ width: '70%', display: 'flex', flexDirection: 'column', height: '80vh' }}>
         {selectedUser ? (
           <>
-            <h4>Chat with {selectedUser.name}</h4>
-            <ListGroup className="mt-4">
-              {messages.map((message, index) => (
-                <ListGroup.Item key={index}>
-                  <strong>{message.sender_id === selectedUser.id ? selectedUser.name : 'You'}:</strong> {message.content}
+            <h5 className="p-2 border-bottom">Chat with {selectedUser.name}</h5>
+            <div className="messages-container" style={{ flexGrow: 1, overflowY: 'auto', padding: '10px' }}>
+              {currentMessages.map((message, index) => (
+                <div
+                  key={message.id || index}
+                  className={`mb-2 ${message.sender_id === selectedUser.id ? 'text-left' : 'text-right'}`}
+                >
+                  <div
+                    className={`d-inline-block p-2 rounded ${
+                      message.sender_id === selectedUser.id ? 'bg-light' : 'bg-primary text-white'
+                    }`}
+                    style={{ maxWidth: '70%', wordBreak: 'break-word' }}
+                  >
+                    {message.content}
+                  </div>
                   <div><small>{new Date(message.timestamp).toLocaleString()}</small></div>
-                </ListGroup.Item>
+                </div>
               ))}
-            </ListGroup>
-            <Form onSubmit={handleSend}>
-              <Form.Group controlId="formContent">
-                <Form.Label>Message</Form.Label>
+              <div ref={messagesEndRef} />
+            </div>
+            <Form onSubmit={handleSend} className="mt-auto p-2">
+              <Form.Group controlId="formContent" className="d-flex">
                 <Form.Control
-                  as="textarea"
-                  rows={3}
+                  type="text"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
+                  placeholder="Type a message..."
                   required
                 />
+                <Button variant="primary" type="submit" className="ml-2">Send</Button>
               </Form.Group>
-              <Button variant="primary" type="submit">Send</Button>
             </Form>
           </>
         ) : (
-          <Alert variant="info">Select a user to start messaging</Alert>
+          <Alert variant="info" className="m-3">Select a user to start messaging</Alert>
         )}
       </div>
+      {error && (
+        <Alert variant="danger" className="mt-3 position-fixed" style={{ bottom: 20, right: 20, maxWidth: '300px', zIndex: 1000 }}>
+          {error}
+        </Alert>
+      )}
     </div>
   );
 }

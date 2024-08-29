@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Form, Button } from 'react-bootstrap';
+import { Form, Button, Alert } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/Api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -8,6 +9,8 @@ function Login() {
     email: '',
     password: ''
   });
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
   const { login } = useAuth();
 
   const handleChange = (e) => {
@@ -18,26 +21,50 @@ function Login() {
     e.preventDefault();
     try {
       const response = await api.post('/auth/login', formData);
-      login(response.data.token);
-      alert('Login Successful');
+      
+      const token = response.data.token;
+      const email = formData.email;
+  
+      if (email) {
+        login(token, email);
+        alert('Login Successful');
+        navigate('/messages');
+      } else {
+        throw new Error('User data is missing or invalid');
+      }
     } catch (error) {
-      console.error(error);
-      alert('Error Logging In');
+      console.error('Error logging in:', error);
+      setError('Error Logging In');
     }
   };
 
   return (
-    <Form onSubmit={handleSubmit}>
-      <Form.Group controlId="formEmail">
-        <Form.Label>Email</Form.Label>
-        <Form.Control type="email" name="email" value={formData.email} onChange={handleChange} required />
-      </Form.Group>
-      <Form.Group controlId="formPassword">
-        <Form.Label>Password</Form.Label>
-        <Form.Control type="password" name="password" value={formData.password} onChange={handleChange} required />
-      </Form.Group>
-      <Button variant="primary" type="submit">Login</Button>
-    </Form>
+    <>
+      {error && <Alert variant="danger">{error}</Alert>}
+      <Form onSubmit={handleSubmit}>
+        <Form.Group controlId="formEmail">
+          <Form.Label>Email</Form.Label>
+          <Form.Control
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
+        </Form.Group>
+        <Form.Group controlId="formPassword">
+          <Form.Label>Password</Form.Label>
+          <Form.Control
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+          />
+        </Form.Group>
+        <Button variant="primary" type="submit">Login</Button>
+      </Form>
+    </>
   );
 }
 

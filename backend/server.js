@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
-const { Server } = require('socket.io');
+const initializeSocket = require('./services/socket');
 
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
@@ -16,19 +16,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/messages', messageRoutes);
 
 const server = http.createServer(app);
-const io = new Server(server, {
-    cors: {
-        origin: '*',
-    },
-});
 
-io.on('connection', (socket) => {
-    console.log('A user connected');
-
-    socket.on('disconnect', () => {
-        console.log('User disconnected');
-    });
-});
+const io = initializeSocket(server);
 
 server.listen(5000, () => {
     console.log('Server running on port 5000');
