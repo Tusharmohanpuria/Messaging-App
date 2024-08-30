@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/Api';
+import '../styles/UserDetails.css';
 
 function UserDetails() {
   const { id } = useParams();
@@ -58,62 +59,68 @@ function UserDetails() {
   };
 
   if (error) {
-    return <Alert variant="danger">{error}</Alert>;
+    return <Alert variant="danger" className="user-details-alert">{error}</Alert>;
   }
 
   if (!user) {
-    return <Alert variant="info">Loading...</Alert>;
+    return <Alert variant="info" className="user-details-alert">Loading...</Alert>;
   }
 
   return (
-    <>
-      {success && <Alert variant="success">{success}</Alert>}
-      <Form onSubmit={handleUpdate}>
-        <Form.Group controlId="formName">
-          <Form.Label>Name</Form.Label>
-          <Form.Control
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-          />
-        </Form.Group>
-        <Form.Group controlId="formEmail">
-          <Form.Label>Email</Form.Label>
-          <Form.Control
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-          />
-        </Form.Group>
-        <Form.Group controlId="formPhone">
-          <Form.Label>Phone Number</Form.Label>
-          <Form.Control
-            type="tel"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-          />
-        </Form.Group>
-        <Form.Group controlId="formRole">
-          <Form.Label>Role</Form.Label>
-          <Form.Control
-            as="select"
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-          >
-            <option>Student</option>
-            <option>Teacher</option>
-            <option>Institute</option>
-          </Form.Control>
-        </Form.Group>
-        <Button variant="primary" type="submit">Update</Button>
-      </Form>
-    </>
+    <div className="user-details-container">
+      <div className="user-details-card">
+        {success && <Alert variant="success" className="user-details-alert">{success}</Alert>}
+        <h2>Edit User Details</h2>
+        <Form onSubmit={handleUpdate}>
+          <Form.Group controlId="formName" className="form-group">
+            <Form.Label className="form-label">Name</Form.Label>
+            <Form.Control
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              className="form-input"
+            />
+          </Form.Group>
+          <Form.Group controlId="formEmail" className="form-group">
+            <Form.Label className="form-label">Email</Form.Label>
+            <Form.Control
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="form-input"
+            />
+          </Form.Group>
+          <Form.Group controlId="formPhone" className="form-group">
+            <Form.Label className="form-label">Phone Number</Form.Label>
+            <Form.Control
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              className="form-input"
+            />
+          </Form.Group>
+          <Form.Group controlId="formRole" className="form-group">
+            <Form.Label className="form-label">Role</Form.Label>
+            <Form.Control
+              as="select"
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              className="form-input"
+            >
+              <option>Student</option>
+              <option>Teacher</option>
+              <option>Institute</option>
+            </Form.Control>
+          </Form.Group>
+          <Button variant="primary" type="submit" className="update-button">Update</Button>
+        </Form>
+      </div>
+    </div>
   );
 }
 
 export default UserDetails;
-
