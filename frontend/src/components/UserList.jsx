@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Table, Button, Alert } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/Api';
+import '../styles/UserList.css';
 
 function UserList() {
   const [users, setUsers] = useState([]);
