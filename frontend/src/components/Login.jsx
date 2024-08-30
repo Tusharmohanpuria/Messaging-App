@@ -3,6 +3,7 @@ import { Form, Button, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/Api';
 import { useAuth } from '../contexts/AuthContext';
+import '../styles/Login.css';
 
 function Login() {
   const [formData, setFormData] = useState({
@@ -39,32 +40,37 @@ function Login() {
   };
 
   return (
-    <>
-      {error && <Alert variant="danger">{error}</Alert>}
-      <Form onSubmit={handleSubmit}>
-        <Form.Group controlId="formEmail">
-          <Form.Label>Email</Form.Label>
-          <Form.Control
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-          />
-        </Form.Group>
-        <Form.Group controlId="formPassword">
-          <Form.Label>Password</Form.Label>
-          <Form.Control
-            type="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-          />
-        </Form.Group>
-        <Button variant="primary" type="submit">Login</Button>
-      </Form>
-    </>
+    <div className="login-container">
+      <div className="login-card">
+        {error && <Alert variant="danger">{error}</Alert>}
+        <h2>Login</h2>
+        <Form onSubmit={handleSubmit}>
+          <Form.Group controlId="formEmail">
+            <Form.Label>Email</Form.Label>
+            <Form.Control
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="form-control"
+              required
+            />
+          </Form.Group>
+          <Form.Group controlId="formPassword">
+            <Form.Label>Password</Form.Label>
+            <Form.Control
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              className="form-control"
+              required
+            />
+          </Form.Group>
+          <Button type="submit" className="login-button">Login</Button>
+        </Form>
+      </div>
+    </div>
   );
 }
 
