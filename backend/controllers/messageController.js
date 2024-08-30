@@ -17,17 +17,19 @@ exports.getMessagesByUser = async (req, res) => {
 exports.sendMessage = async (req, res) => {
     const { recipient_id, content } = req.body;
     try {
-        const [result] = await pool.query(
-            'INSERT INTO messages (sender_id, recipient_id, content) VALUES (?, ?, ?)',
-            [req.user.id, recipient_id, content]
-        );
-        const [newMessage] = await pool.query(
-            'SELECT * FROM messages WHERE id = ?',
-            [result.insertId]
-        );
-        res.status(201).json(newMessage[0]);
+      const [result] = await pool.query(
+        'INSERT INTO messages (sender_id, recipient_id, content, timestamp) VALUES (?, ?, ?, ?)',
+        [req.user.id, recipient_id, content, new Date()]
+      );
+      
+      const [newMessage] = await pool.query(
+        'SELECT * FROM messages WHERE id = ?',
+        [result.insertId]
+      );
+      
+      res.status(201).json(newMessage[0]);
     } catch (err) {
-        console.error('Error in sendMessage:', err);
-        res.status(500).json({ message: 'Server Error', error: err.message });
+      console.error('Error in sendMessage:', err);
+      res.status(500).json({ message: 'Server Error', error: err.message });
     }
-};
+  };

@@ -1,6 +1,5 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Form, Button, ListGroup, Alert } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
 import api from '../services/Api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -10,7 +9,6 @@ function Messages() {
   const [allMessages, setAllMessages] = useState({});
   const [content, setContent] = useState('');
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
   const { currentUser, socket, onlineUsers, initializeSocket } = useAuth();
   const messagesEndRef = useRef(null);
 
@@ -40,11 +38,12 @@ function Messages() {
       if (!updatedMessages[otherUserId]) {
         updatedMessages[otherUserId] = [];
       }
-      
+
       const messageExists = updatedMessages[otherUserId].some(msg => msg.id === message.id);
       if (!messageExists) {
         updatedMessages[otherUserId] = [...updatedMessages[otherUserId], message];
       }
+
       return updatedMessages;
     });
   }, [currentUser]);
@@ -76,10 +75,6 @@ function Messages() {
     }
   }, [selectedUser, fetchMessages]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [allMessages]);
-
   const handleSend = async (e) => {
     e.preventDefault();
     if (!selectedUser || !socket || !content.trim()) return;
@@ -87,8 +82,9 @@ function Messages() {
     try {
       const response = await api.post('/messages', { recipient_id: selectedUser.id, content });
       const newMessage = response.data;
-      handleNewMessage(newMessage);
+
       socket.emit('sendMessage', newMessage);
+
       setContent('');
       setError(null);
     } catch (error) {
@@ -110,7 +106,13 @@ function Messages() {
 
   const isUserOnline = (email) => onlineUsers.includes(email);
 
-  const currentMessages = selectedUser ? allMessages[selectedUser.id] || [] : [];
+  const currentMessages = useMemo(() => {
+    return selectedUser ? allMessages[selectedUser.id] || [] : [];
+  }, [selectedUser, allMessages, handleSend, handleNewMessage]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [currentMessages]);
 
   return (
     <div className="d-flex h-100">

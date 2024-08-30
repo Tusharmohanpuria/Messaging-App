@@ -26,23 +26,20 @@ const initializeSocket = (server) => {
       }
     }
 
-    socket.on('sendMessage', async (message) => {
+    socket.on('sendMessage', (message) => {
       try {
-        const [newMessage] = await pool.query('SELECT * FROM messages WHERE id = ?', [result.insertId]);
-        
         const recipientSocket = userSockets.get(message.recipient_email);
         if (recipientSocket) {
-          recipientSocket.emit('message', newMessage[0]);
+          recipientSocket.emit('message', message);
         }
-        socket.emit('message', newMessage[0]);
+
+        socket.emit('message', message);
       } catch (error) {
-        console.error('Error saving and broadcasting message:', error);
+        console.error('Error broadcasting message:', error);
       }
     });
 
     socket.on('disconnect', async () => {
-      console.log('User disconnected');
-
       if (userEmail) {
         userSockets.delete(userEmail);
 
