@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { Form, Button, ListGroup, Alert } from 'react-bootstrap';
 import api from '../services/Api';
 import { useAuth } from '../contexts/AuthContext';
+import '../styles/Messages.css';
+
 
 function Messages() {
   const [users, setUsers] = useState([]);
