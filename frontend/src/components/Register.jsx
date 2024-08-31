@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Form, Button } from 'react-bootstrap';
+import { Form, Button, Alert } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/Api';
 import '../styles/Register.css';
 
@@ -11,6 +12,9 @@ function Register() {
     role: 'Student',
     password: ''
   });
+  const [status, setStatus] = useState(null);
+  const [isError, setIsError] = useState(false);
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -20,10 +24,16 @@ function Register() {
     e.preventDefault();
     try {
       await api.post('/auth/register', formData);
-      alert('User Registered Successfully');
+      setStatus('User Registered Successfully');
+      setIsError(false);
+      setTimeout(() => {
+        navigate('/login');
+      }, 1000);
+
     } catch (error) {
       console.error(error);
-      alert('Error Registering User');
+      setStatus('Error Registering User');
+      setIsError(true);
     }
   };
 
@@ -31,6 +41,7 @@ function Register() {
     <div className="register-container">
       <div className="register-card">
         <h2>Register</h2>
+        {status && <Alert variant={isError ? "danger" : "success"}>{status}</Alert>}
         <Form onSubmit={handleSubmit}>
           <Form.Group controlId="formName">
             <Form.Label>Name</Form.Label>
@@ -100,4 +111,3 @@ function Register() {
 }
 
 export default Register;
-

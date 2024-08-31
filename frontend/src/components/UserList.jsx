@@ -67,38 +67,41 @@ function UserList() {
   return (
     <>
       <h2>User List</h2>
-      <Table striped bordered hover>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>Role</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map(user => (
-            <tr key={user.id}>
-              <td>{user.id}</td>
-              <td>{user.name}</td>
-              <td>{user.email}</td>
-              <td>{user.phone}</td>
-              <td>{user.role}</td>
-              <td>
-                <Link to={`/users/${user.id}`} className="btn btn-info btn-sm me-2">View</Link>
-                {currentUser === user.email && (
-                  <Button variant="danger" size="sm" onClick={() => handleDelete(user.id)}>Delete</Button>
-                )}
-              </td>
+      <div className="table-responsive custom-scrollbar"> {/* Added custom-scrollbar class */}
+        <Table striped bordered hover className="user-list-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Role</th>
+              <th>Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </Table>
+          </thead>
+          <tbody>
+            {users.map(user => (
+              <tr key={user.id}>
+                <td>{user.id}</td>
+                <td>{user.name}</td>
+                <td>{user.email}</td>
+                <td>{user.phone}</td>
+                <td>{user.role}</td>
+                <td>
+                  <div className="d-flex justify-content-center">
+                    <Link to={`/users/${user.id}`} className="btn btn-info btn-sm me-2">View</Link>
+                    {currentUser === user.email && (
+                      <Button variant="danger" size="sm" onClick={() => handleDelete(user.id)}>Delete</Button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </div>
     </>
   );
 }
 
 export default UserList;
-

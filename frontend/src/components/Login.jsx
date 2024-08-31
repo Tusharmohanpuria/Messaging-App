@@ -28,13 +28,11 @@ function Login() {
   
       if (email) {
         login(token, email);
-        alert('Login Successful');
         navigate('/messages');
       } else {
         throw new Error('User data is missing or invalid');
       }
     } catch (error) {
-      console.error('Error logging in:', error);
       setError('Error Logging In');
     }
   };
