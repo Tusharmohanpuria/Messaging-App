@@ -165,3 +165,8 @@ body {
   content: '⚠️';
   margin-right: 8px;
 }
+
+.MessageDate{
+  font-size: 0.8rem;
+  color: #78909c;
+}

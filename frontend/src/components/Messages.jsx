@@ -1,9 +1,8 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Form, Button, ListGroup, Alert } from 'react-bootstrap';
 import api from '../services/Api';
 import { useAuth } from '../contexts/AuthContext';
 import '../styles/Messages.css';
-
 
 function Messages() {
   const [users, setUsers] = useState([]);
@@ -11,8 +10,11 @@ function Messages() {
   const [allMessages, setAllMessages] = useState({});
   const [content, setContent] = useState('');
   const [error, setError] = useState(null);
+  const [currentMessages, setCurrentMessages] = useState([]);
   const { currentUser, socket, onlineUsers, initializeSocket } = useAuth();
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const previousMessageCountRef = useRef(0);
 
   useEffect(() => {
     initializeSocket();
@@ -33,22 +35,27 @@ function Messages() {
     fetchUsers();
   }, [fetchUsers]);
 
+  const updateCurrentMessages = useCallback(() => {
+    setCurrentMessages(selectedUser ? allMessages[selectedUser.id] || [] : []);
+    scrollToBottom();
+  }, [allMessages, selectedUser]);
+
   const handleNewMessage = useCallback((message) => {
     setAllMessages((prevMessages) => {
       const otherUserId = message.sender_id === currentUser ? message.recipient_id : message.sender_id;
-      const updatedMessages = { ...prevMessages };
-      if (!updatedMessages[otherUserId]) {
-        updatedMessages[otherUserId] = [];
-      }
-
-      const messageExists = updatedMessages[otherUserId].some(msg => msg.id === message.id);
-      if (!messageExists) {
-        updatedMessages[otherUserId] = [...updatedMessages[otherUserId], message];
-      }
-
+      const updatedMessages = {
+        ...prevMessages,
+        [otherUserId]: [
+          ...(prevMessages[otherUserId] || []),
+          message
+        ].filter((msg, index, self) => 
+          index === self.findIndex((t) => t.id === msg.id)
+        )
+      };
       return updatedMessages;
     });
-  }, [currentUser]);
+    updateCurrentMessages();
+  }, [currentUser, updateCurrentMessages]);
 
   useEffect(() => {
     if (socket) {
@@ -64,12 +71,13 @@ function Messages() {
         ...prevMessages,
         [userId]: response.data
       }));
+      updateCurrentMessages();
       setError(null);
     } catch (error) {
       console.error('Error fetching messages:', error);
       handleError(error);
     }
-  }, []);
+  }, [updateCurrentMessages]);
 
   useEffect(() => {
     if (selectedUser) {
@@ -86,6 +94,15 @@ function Messages() {
       const newMessage = response.data;
 
       socket.emit('sendMessage', newMessage);
+
+      setAllMessages((prevMessages) => ({
+        ...prevMessages,
+        [selectedUser.id]: [
+          ...(prevMessages[selectedUser.id] || []),
+          newMessage
+        ]
+      }));
+      updateCurrentMessages();
 
       setContent('');
       setError(null);
@@ -108,12 +125,37 @@ function Messages() {
 
   const isUserOnline = (email) => onlineUsers.includes(email);
 
-  const currentMessages = useMemo(() => {
-    return selectedUser ? allMessages[selectedUser.id] || [] : [];
-  }, [selectedUser, allMessages, handleSend, handleNewMessage]);
+  useEffect(() => {
+    scrollToBottom();
+  }, [currentMessages]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (selectedUser) {
+      previousMessageCountRef.current = 0;
+      scrollToBottom(true);
+    }
+  }, [selectedUser]);
+
+  const scrollToBottom = (force = false) => {
+    if (messagesContainerRef.current && messagesEndRef.current) {
+      const container = messagesContainerRef.current;
+      const scrollElement = messagesEndRef.current;
+      
+      const newMessageCount = currentMessages.length - previousMessageCountRef.current;
+      previousMessageCountRef.current = currentMessages.length;
+  
+      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+      
+      if (force || isNearBottom || newMessageCount > 5) {
+        scrollElement.scrollIntoView({ behavior: 'auto' });
+      } else if (newMessageCount > 0) {
+        scrollElement.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom();
   }, [currentMessages]);
 
   return (
@@ -142,7 +184,7 @@ function Messages() {
         {selectedUser ? (
           <>
             <h5 className="p-2 border-bottom">Chat with {selectedUser.name}</h5>
-            <div className="messages-container" style={{ flexGrow: 1, overflowY: 'auto', padding: '10px' }}>
+            <div className="messages-container" ref={messagesContainerRef} style={{ flexGrow: 1, overflowY: 'auto', padding: '10px' }}>
               {currentMessages.map((message, index) => (
                 <div
                   key={message.id || index}
@@ -156,7 +198,16 @@ function Messages() {
                   >
                     {message.content}
                   </div>
-                  <div><small>{new Date(message.timestamp).toLocaleString()}</small></div>
+                  <div className="MessageDate"><small>
+                    {new Date(message.timestamp).toLocaleString('en-GB', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    })}
+                  </small></div>
                 </div>
               ))}
               <div ref={messagesEndRef} />
