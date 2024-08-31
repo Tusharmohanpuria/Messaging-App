@@ -15,21 +15,25 @@ exports.getMessagesByUser = async (req, res) => {
 };
 
 exports.sendMessage = async (req, res) => {
-    const { recipient_id, content } = req.body;
-    try {
+  const { recipient_id, content } = req.body;
+  try {
+      const [sender] = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
+      const [recipient] = await pool.query('SELECT * FROM users WHERE id = ?', [recipient_id]);
+
+      if (sender.length === 0) return res.status(400).json({ message: 'Sender not found' });
+      if (recipient.length === 0) return res.status(400).json({ message: 'Recipient not found' });
+
       const [result] = await pool.query(
-        'INSERT INTO messages (sender_id, recipient_id, content, timestamp) VALUES (?, ?, ?, ?)',
-        [req.user.id, recipient_id, content, new Date()]
+          'INSERT INTO messages (sender_id, recipient_id, content, timestamp) VALUES (?, ?, ?, ?)',
+          [req.user.id, recipient_id, content, new Date()]
       );
-      
-      const [newMessage] = await pool.query(
-        'SELECT * FROM messages WHERE id = ?',
-        [result.insertId]
-      );
-      
+
+      const [newMessage] = await pool.query('SELECT * FROM messages WHERE id = ?', [result.insertId]);
+
       res.status(201).json(newMessage[0]);
-    } catch (err) {
+  } catch (err) {
       console.error('Error in sendMessage:', err);
       res.status(500).json({ message: 'Server Error', error: err.message });
-    }
-  };
+  }
+};
+

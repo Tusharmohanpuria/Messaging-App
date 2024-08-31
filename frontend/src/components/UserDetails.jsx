@@ -60,6 +60,10 @@ function UserDetails() {
     }
   };
 
+  const handleBack = () => {
+    navigate(-1);
+  };
+
   if (error) {
     return <Alert variant="danger" className="user-details-alert">{error}</Alert>;
   }
@@ -126,6 +130,7 @@ function UserDetails() {
             <Button variant="primary" type="submit" className="update-button">Update</Button>
           )}
         </Form>
+        <Button variant="secondary" onClick={handleBack} className="update-button">Back</Button>
       </div>
     </div>
   );

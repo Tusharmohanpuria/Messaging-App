@@ -8,7 +8,7 @@ import '../styles/UserList.css';
 function UserList() {
   const [users, setUsers] = useState([]);
   const [error, setError] = useState(null);
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -49,6 +49,8 @@ function UserList() {
     try {
       await api.delete(`/users/${id}`);
       setUsers(users.filter(user => user.id !== id));
+      logout();
+      navigate('/login');
     } catch (error) {
       console.error('Error deleting user:', error);
       if (error.response?.status === 401) {

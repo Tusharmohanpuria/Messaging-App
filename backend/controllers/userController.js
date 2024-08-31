@@ -34,11 +34,17 @@ exports.updateUser = async (req, res) => {
 };
 
 exports.deleteUser = async (req, res) => {
+    const userId = req.params.id;
     try {
-        const [result] = await pool.query('DELETE FROM users WHERE id = ?', [req.params.id]);
+        await pool.query('DELETE FROM messages WHERE sender_id = ?', [userId]);
+        await pool.query('DELETE FROM messages WHERE recipient_id = ?', [userId]);
+
+        const [result] = await pool.query('DELETE FROM users WHERE id = ?', [userId]);
+
         if (result.affectedRows === 0) return res.status(404).send('User Not Found');
-        res.status(200).send('User Deleted');
+        res.status(200).send('User and related messages deleted');
     } catch (err) {
+        console.error('Error in deleteUser:', err);
         res.status(500).send('Server Error');
     }
 };

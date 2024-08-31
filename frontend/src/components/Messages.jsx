@@ -11,7 +11,7 @@ function Messages() {
   const [content, setContent] = useState('');
   const [error, setError] = useState(null);
   const [currentMessages, setCurrentMessages] = useState([]);
-  const { currentUser, socket, onlineUsers, initializeSocket } = useAuth();
+  const { currentUser, logout, socket, onlineUsers, initializeSocket } = useAuth();
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const previousMessageCountRef = useRef(0);
@@ -21,6 +21,9 @@ function Messages() {
 
   useEffect(() => {
     initializeSocket();
+    if (!currentUser) {
+      logout();
+    }
   }, [initializeSocket]);
 
   const fetchUsers = useCallback(async () => {
