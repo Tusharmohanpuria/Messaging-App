@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { Table, Button, Alert } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/Api';
+import { useAuth } from '../contexts/AuthContext';
 import '../styles/UserList.css';
 
 function UserList() {
   const [users, setUsers] = useState([]);
   const [error, setError] = useState(null);
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -86,7 +88,9 @@ function UserList() {
               <td>{user.role}</td>
               <td>
                 <Link to={`/users/${user.id}`} className="btn btn-info btn-sm me-2">View</Link>
-                <Button variant="danger" size="sm" onClick={() => handleDelete(user.id)}>Delete</Button>
+                {currentUser === user.email && (
+                  <Button variant="danger" size="sm" onClick={() => handleDelete(user.id)}>Delete</Button>
+                )}
               </td>
             </tr>
           ))}

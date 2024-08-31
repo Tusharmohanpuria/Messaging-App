@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/Api';
+import { useAuth } from '../contexts/AuthContext';
 import '../styles/UserDetails.css';
 
 function UserDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const { currentUser } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -45,7 +47,7 @@ function UserDetails() {
     e.preventDefault();
     try {
       await api.put(`/users/${id}`, formData);
-      setSuccess('User Updated Successfully');
+      setSuccess('User updated successfully.');
       setError(null);
     } catch (error) {
       console.error('Error updating user:', error);
@@ -70,7 +72,7 @@ function UserDetails() {
     <div className="user-details-container">
       <div className="user-details-card">
         {success && <Alert variant="success" className="user-details-alert">{success}</Alert>}
-        <h2>Edit User Details</h2>
+        <h2>{currentUser === user.email ? 'Edit Your Profile Details' : 'User Details'}</h2>
         <Form onSubmit={handleUpdate}>
           <Form.Group controlId="formName" className="form-group">
             <Form.Label className="form-label">Name</Form.Label>
@@ -80,6 +82,7 @@ function UserDetails() {
               value={formData.name}
               onChange={handleChange}
               className="form-input"
+              readOnly={currentUser !== user.email}
             />
           </Form.Group>
           <Form.Group controlId="formEmail" className="form-group">
@@ -90,6 +93,7 @@ function UserDetails() {
               value={formData.email}
               onChange={handleChange}
               className="form-input"
+              readOnly={currentUser !== user.email}
             />
           </Form.Group>
           <Form.Group controlId="formPhone" className="form-group">
@@ -100,6 +104,7 @@ function UserDetails() {
               value={formData.phone}
               onChange={handleChange}
               className="form-input"
+              readOnly={currentUser !== user.email}
             />
           </Form.Group>
           <Form.Group controlId="formRole" className="form-group">
@@ -110,13 +115,16 @@ function UserDetails() {
               value={formData.role}
               onChange={handleChange}
               className="form-input"
+              disabled={currentUser !== user.email}
             >
               <option>Student</option>
               <option>Teacher</option>
               <option>Institute</option>
             </Form.Control>
           </Form.Group>
-          <Button variant="primary" type="submit" className="update-button">Update</Button>
+          {currentUser === user.email && (
+            <Button variant="primary" type="submit" className="update-button">Update</Button>
+          )}
         </Form>
       </div>
     </div>

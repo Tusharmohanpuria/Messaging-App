@@ -15,6 +15,9 @@ function Messages() {
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const previousMessageCountRef = useRef(0);
+  const [isScrolledToBottom, setIsScrolledToBottom] = useState(true);
+  const [isManualScrolling, setIsManualScrolling] = useState(false);
+  const manualScrollTimeout = useRef(null);
 
   useEffect(() => {
     initializeSocket();
@@ -125,17 +128,6 @@ function Messages() {
 
   const isUserOnline = (email) => onlineUsers.includes(email);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [currentMessages]);
-
-  useEffect(() => {
-    if (selectedUser) {
-      previousMessageCountRef.current = 0;
-      scrollToBottom(true);
-    }
-  }, [selectedUser]);
-
   const scrollToBottom = (force = false) => {
     if (messagesContainerRef.current && messagesEndRef.current) {
       const container = messagesContainerRef.current;
@@ -146,17 +138,94 @@ function Messages() {
   
       const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
       
-      if (force || isNearBottom || newMessageCount > 5) {
+      if ((force || isNearBottom || newMessageCount > 5) && !isManualScrolling) {
         scrollElement.scrollIntoView({ behavior: 'auto' });
-      } else if (newMessageCount > 0) {
+        setIsScrolledToBottom(true);
+      } else if (newMessageCount > 0 && isScrolledToBottom && !isManualScrolling) {
         scrollElement.scrollIntoView({ behavior: 'smooth' });
       }
     }
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [currentMessages]);
+    if (!isManualScrolling) {
+      scrollToBottom();
+    }
+  }, [currentMessages, isManualScrolling]);
+
+  const handleScroll = useCallback(() => {
+    if (messagesContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 1;
+      setIsScrolledToBottom(isAtBottom);
+    }
+  }, []);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, [handleScroll]);
+
+  const handleManualScroll = () => {
+    setIsManualScrolling(true);
+    clearTimeout(manualScrollTimeout.current);
+    manualScrollTimeout.current = setTimeout(() => {
+      setIsManualScrolling(false);
+    });
+  };
+
+  useEffect(() => {
+    if (selectedUser) {
+      previousMessageCountRef.current = 0;
+      scrollToBottom(true);
+    }
+  }, [selectedUser]);
+
+  const formatMessageDate = (timestamp) => {
+    const messageDate = new Date(timestamp);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+  
+    const isToday = messageDate.toDateString() === today.toDateString();
+    const isYesterday = messageDate.toDateString() === yesterday.toDateString();
+  
+    if (isToday) {
+      return 'Today';
+    } else if (isYesterday) {
+      return 'Yesterday';
+    } else {
+      return messageDate.toLocaleString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+    }
+  };  
+
+  const formatMessageTime = (timestamp) => {
+    return new Date(timestamp).toLocaleString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const groupMessagesByDate = (messages) => {
+    return messages.reduce((groups, message) => {
+      const date = formatMessageDate(message.timestamp);
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(message);
+      return groups;
+    }, {});
+  };
+
+  const groupedMessages = groupMessagesByDate(currentMessages);
 
   return (
     <div className="d-flex h-100">
@@ -184,31 +253,34 @@ function Messages() {
         {selectedUser ? (
           <>
             <h5 className="p-2 border-bottom">Chat with {selectedUser.name}</h5>
-            <div className="messages-container" ref={messagesContainerRef} style={{ flexGrow: 1, overflowY: 'auto', padding: '10px' }}>
-              {currentMessages.map((message, index) => (
-                <div
-                  key={message.id || index}
-                  className={`mb-2 ${message.sender_id === selectedUser.id ? 'text-left' : 'text-right'}`}
-                >
-                  <div
-                    className={`d-inline-block p-2 rounded ${
-                      message.sender_id === selectedUser.id ? 'bg-light' : 'bg-primary text-white'
-                    }`}
-                    style={{ maxWidth: '70%', wordBreak: 'break-word' }}
-                  >
-                    {message.content}
+            <div 
+              className="messages-container" 
+              ref={messagesContainerRef} 
+              style={{ flexGrow: 1, overflowY: 'auto', padding: '10px' }}
+              onScroll={handleManualScroll}
+            >
+              {Object.keys(groupedMessages).map((date, index) => (
+                <React.Fragment key={index}>
+                  <div className="text-center text-muted my-3">
+                    <small>{date}</small>
                   </div>
-                  <div className="MessageDate"><small>
-                    {new Date(message.timestamp).toLocaleString('en-GB', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true
-                    })}
-                  </small></div>
-                </div>
+                  {groupedMessages[date].map((message) => (
+                    <div
+                      key={message.id}
+                      className={`mb-2 ${message.sender_id === selectedUser.id ? 'text-left' : 'text-right'}`}
+                    >
+                      <div
+                        className={`d-inline-block p-2 rounded ${
+                          message.sender_id === selectedUser.id ? 'bg-light' : 'bg-primary text-white'
+                        }`}
+                        style={{ maxWidth: '70%', wordBreak: 'break-word' }}
+                      >
+                        {message.content}
+                      </div>
+                      <div><small className="text-muted">{formatMessageTime(message.timestamp)}</small></div>
+                    </div>
+                  ))}
+                </React.Fragment>
               ))}
               <div ref={messagesEndRef} />
             </div>
@@ -226,14 +298,9 @@ function Messages() {
             </Form>
           </>
         ) : (
-          <Alert variant="info" className="m-3">Select a user to start messaging</Alert>
+          <Alert variant="info" className="m-3">Select a user to start chatting.</Alert>
         )}
       </div>
-      {error && (
-        <Alert variant="danger" className="mt-3 position-fixed" style={{ bottom: 20, right: 20, maxWidth: '300px', zIndex: 1000 }}>
-          {error}
-        </Alert>
-      )}
     </div>
   );
 }
